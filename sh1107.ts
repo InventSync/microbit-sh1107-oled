@@ -2,16 +2,10 @@ namespace SH1107 {
 
     let address = 0x3C
 
-    let width = 96
-    let height = 96
-
-    // 96x96 monochrome display:
-    // 96 * 96 / 8 = 1152 bytes
     let buffer = pins.createBuffer(1152)
 
 
-    // Simple 5x8 font
-    // Supports A-Z and space
+    // Simple 5x8 font (A-Z + space)
     let font = [
         [0x00,0x00,0x00,0x00,0x00], // space
         [0x7E,0x11,0x11,0x11,0x7E], // A
@@ -43,7 +37,9 @@ namespace SH1107 {
     ]
 
 
+    //% blockId=sh1107_init
     //% block="initialize OLED"
+    //% group="SH1107 OLED"
     export function init() {
 
         let commands = [
@@ -64,19 +60,16 @@ namespace SH1107 {
             0xAF
         ]
 
-
-        for(let c of commands){
+        for (let c of commands) {
             command(c)
         }
-
 
         clear()
         show()
     }
 
 
-
-    function command(value:number){
+    function command(value:number) {
 
         let data = pins.createBuffer(2)
 
@@ -88,21 +81,22 @@ namespace SH1107 {
 
 
 
+    //% blockId=sh1107_clear
     //% block="clear OLED"
-    export function clear(){
+    //% group="SH1107 OLED"
+    export function clear() {
 
-        for(let i = 0; i < 1152; i++){
-
+        for(let i = 0; i < 1152; i++) {
             buffer[i] = 0
-
         }
-
     }
 
 
 
+    //% blockId=sh1107_pixel
     //% block="draw pixel x $x y $y"
-    export function pixel(x:number,y:number){
+    //% group="SH1107 OLED"
+    export function pixel(x:number,y:number) {
 
         if(x < 0 || x >= 96)
             return
@@ -116,16 +110,16 @@ namespace SH1107 {
         let index = page * 96 + x
 
         buffer[index] |= (1 << (y % 8))
-
     }
 
 
 
-    // Send buffer to display
+    //% blockId=sh1107_show
     //% block="update OLED"
-    export function show(){
+    //% group="SH1107 OLED"
+    export function show() {
 
-        for(let page = 0; page < 12; page++){
+        for(let page = 0; page < 12; page++) {
 
             command(0xB0 + page)
 
@@ -138,7 +132,7 @@ namespace SH1107 {
             data[0] = 0x40
 
 
-            for(let x = 0; x < 96; x++){
+            for(let x = 0; x < 96; x++) {
 
                 data[x+1] = buffer[(page * 96) + x]
 
@@ -146,40 +140,42 @@ namespace SH1107 {
 
 
             pins.i2cWriteBuffer(address,data)
-
         }
-
     }
 
 
 
-
+    /**
+     * Display text
+     */
+    //% blockId=sh1107_show_text
     //% block="show text $text"
-    export function showText(text:string){
+    //% group="SH1107 OLED"
+    export function showText(text:string) {
 
         let x = 0
         let y = 0
 
 
-        for(let i = 0; i < text.length; i++){
+        for(let i = 0; i < text.length; i++) {
 
             let charCode = text.charCodeAt(i)
 
 
-            // Only A-Z supported
-            if(charCode >= 65 && charCode <= 90){
+            // A-Z only
+            if(charCode >= 65 && charCode <= 90) {
 
                 let index = charCode - 64
 
 
-                for(let col = 0; col < 5; col++){
+                for(let col = 0; col < 5; col++) {
 
                     let line = font[index][col]
 
 
-                    for(let row = 0; row < 8; row++){
+                    for(let row = 0; row < 8; row++) {
 
-                        if((line & (1 << row)) != 0){
+                        if((line & (1 << row)) != 0) {
 
                             pixel(
                                 x + col,
@@ -187,29 +183,24 @@ namespace SH1107 {
                             )
 
                         }
-
                     }
-
                 }
 
 
                 x += 6
-
             }
 
 
             // Space
-            else if(charCode == 32){
+            else if(charCode == 32) {
 
                 x += 6
 
             }
-
         }
 
 
         show()
-
     }
 
 }
