@@ -2,7 +2,45 @@ namespace SH1107 {
 
     let address = 0x3C
 
-    let buffer = pins.createBuffer(1024)
+    let width = 96
+    let height = 96
+
+    // 96x96 monochrome display:
+    // 96 * 96 / 8 = 1152 bytes
+    let buffer = pins.createBuffer(1152)
+
+
+    // Simple 5x8 font
+    // Supports A-Z and space
+    let font = [
+        [0x00,0x00,0x00,0x00,0x00], // space
+        [0x7E,0x11,0x11,0x11,0x7E], // A
+        [0x7F,0x49,0x49,0x49,0x36], // B
+        [0x3E,0x41,0x41,0x41,0x22], // C
+        [0x7F,0x41,0x41,0x22,0x1C], // D
+        [0x7F,0x49,0x49,0x49,0x41], // E
+        [0x7F,0x09,0x09,0x09,0x01], // F
+        [0x3E,0x41,0x49,0x49,0x7A], // G
+        [0x7F,0x08,0x08,0x08,0x7F], // H
+        [0x00,0x41,0x7F,0x41,0x00], // I
+        [0x20,0x40,0x41,0x3F,0x01], // J
+        [0x7F,0x08,0x14,0x22,0x41], // K
+        [0x7F,0x40,0x40,0x40,0x40], // L
+        [0x7F,0x02,0x0C,0x02,0x7F], // M
+        [0x7F,0x04,0x08,0x10,0x7F], // N
+        [0x3E,0x41,0x41,0x41,0x3E], // O
+        [0x7F,0x09,0x09,0x09,0x06], // P
+        [0x3E,0x41,0x51,0x21,0x5E], // Q
+        [0x7F,0x09,0x19,0x29,0x46], // R
+        [0x46,0x49,0x49,0x49,0x31], // S
+        [0x01,0x01,0x7F,0x01,0x01], // T
+        [0x3F,0x40,0x40,0x40,0x3F], // U
+        [0x1F,0x20,0x40,0x20,0x1F], // V
+        [0x7F,0x20,0x18,0x20,0x7F], // W
+        [0x63,0x14,0x08,0x14,0x63], // X
+        [0x03,0x04,0x78,0x04,0x03], // Y
+        [0x61,0x51,0x49,0x45,0x43]  // Z
+    ]
 
 
     //% block="initialize OLED"
@@ -11,7 +49,7 @@ namespace SH1107 {
         let commands = [
             0xAE,
             0xD5,0x80,
-            0xA8,0x7F,
+            0xA8,0x5F,
             0xD3,0x00,
             0x40,
             0xAD,0x8B,
@@ -26,78 +64,151 @@ namespace SH1107 {
             0xAF
         ]
 
-        for (let c of commands) {
-            sendCommand(c)
+
+        for(let c of commands){
+            command(c)
         }
+
 
         clear()
         show()
     }
 
 
-    function sendCommand(cmd:number){
 
-        let buf = pins.createBuffer(2)
+    function command(value:number){
 
-        buf[0]=0x00
-        buf[1]=cmd
+        let data = pins.createBuffer(2)
 
-        pins.i2cWriteBuffer(address,buf)
+        data[0] = 0x00
+        data[1] = value
 
+        pins.i2cWriteBuffer(address,data)
     }
+
 
 
     //% block="clear OLED"
     export function clear(){
 
-        for(let i=0;i<1024;i++){
-            buffer[i]=0
+        for(let i = 0; i < 1152; i++){
+
+            buffer[i] = 0
+
         }
 
     }
 
 
+
     //% block="draw pixel x $x y $y"
-    export function pixel(
-        x:number,
-        y:number
-    ){
+    export function pixel(x:number,y:number){
+
+        if(x < 0 || x >= 96)
+            return
+
+        if(y < 0 || y >= 96)
+            return
+
 
         let page = Math.idiv(y,8)
 
-        let index = page*128+x
+        let index = page * 96 + x
 
-        buffer[index] |= 1 << (y%8)
+        buffer[index] |= (1 << (y % 8))
 
     }
 
 
 
+    // Send buffer to display
     //% block="update OLED"
     export function show(){
 
-        for(let page=0;page<16;page++){
+        for(let page = 0; page < 12; page++){
 
-            sendCommand(0xB0+page)
+            command(0xB0 + page)
 
-            sendCommand(0x02)
-            sendCommand(0x10)
-
-
-            let data=pins.createBuffer(129)
-
-            data[0]=0x40
+            command(0x02)
+            command(0x10)
 
 
-            for(let x=0;x<128;x++){
+            let data = pins.createBuffer(97)
 
-                data[x+1]=buffer[page*128+x]
+            data[0] = 0x40
+
+
+            for(let x = 0; x < 96; x++){
+
+                data[x+1] = buffer[(page * 96) + x]
 
             }
+
 
             pins.i2cWriteBuffer(address,data)
 
         }
+
+    }
+
+
+
+
+    //% block="show text $text"
+    export function showText(text:string){
+
+        let x = 0
+        let y = 0
+
+
+        for(let i = 0; i < text.length; i++){
+
+            let charCode = text.charCodeAt(i)
+
+
+            // Only A-Z supported
+            if(charCode >= 65 && charCode <= 90){
+
+                let index = charCode - 64
+
+
+                for(let col = 0; col < 5; col++){
+
+                    let line = font[index][col]
+
+
+                    for(let row = 0; row < 8; row++){
+
+                        if((line & (1 << row)) != 0){
+
+                            pixel(
+                                x + col,
+                                y + row
+                            )
+
+                        }
+
+                    }
+
+                }
+
+
+                x += 6
+
+            }
+
+
+            // Space
+            else if(charCode == 32){
+
+                x += 6
+
+            }
+
+        }
+
+
+        show()
 
     }
 
