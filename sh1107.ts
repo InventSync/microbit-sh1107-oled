@@ -181,48 +181,81 @@ namespace SH1107 {
     //% group="SH1107 OLED"
     export function showText(text:string) {
 
-    let x = 0
-    let y = 0
+        let x = 0
+        let y = 0
 
-    for(let i = 0; i < text.length; i++) {
 
-        let charCode = text.charCodeAt(i)
-        let index = -1
+        for(let i = 0; i < text.length; i++) {
 
-        // A-Z
-        if(charCode >= 65 && charCode <= 90) {
-            index = charCode - 64
-        }
+            let charCode = text.charCodeAt(i)
+            let index = -1
 
-        // a-z  <-- this branch is the important one
-        else if(charCode >= 97 && charCode <= 122) {
-            index = charCode - 96 + 26
-        }
 
-        // Space
-        else if(charCode == 32) {
-            index = 0
-        }
+            // Newline character - force wrap
+            if(charCode == 10) {
 
-        if(index >= 0) {
-
-            for(let col = 0; col < 5; col++) {
-
-                let line = font[index][col]
-
-                for(let row = 0; row < 8; row++) {
-
-                    if((line & (1 << row)) != 0) {
-                        pixel(x + col, y + row)
-                    }
-                }
+                x = 0
+                y += 8
+                continue
             }
 
-            x += 6
-        }
-    }
 
-    show()
-}
+            // A-Z
+            if(charCode >= 65 && charCode <= 90) {
+                index = charCode - 64
+            }
+
+            // a-z
+            else if(charCode >= 97 && charCode <= 122) {
+                index = charCode - 96 + 26
+            }
+
+            // Space
+            else if(charCode == 32) {
+                index = 0
+            }
+
+
+            // Wrap to next line if this character would run off the right edge
+            if(x + 5 >= 96) {
+
+                x = 0
+                y += 8
+            }
+
+            // Stop drawing if we've run out of vertical space
+            if(y + 8 > 96) {
+                break
+            }
+
+
+            if(index >= 0) {
+
+                for(let col = 0; col < 5; col++) {
+
+                    let line = font[index][col]
+
+
+                    for(let row = 0; row < 8; row++) {
+
+                        if((line & (1 << row)) != 0) {
+
+                            pixel(
+                                x + col,
+                                y + row
+                            )
+
+                        }
+                    }
+                }
+
+
+                x += 6
+            }
+        }
+
+
+        show()
+    }
 
 }
