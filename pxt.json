@@ -1,6 +1,6 @@
 {
     "name": "SH1107 OLED 128x128",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Grove OLED 1.12 inch SH1107 driver for micro:bit",
     "dependencies": {
         "core": "*"
